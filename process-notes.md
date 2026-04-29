@@ -40,6 +40,18 @@
 - **Prior SDD experience:** None formally. Has asked Claude Code for plans before executing, but never driven the spec process himself. Good baseline for /reflect to probe the shift from passive to active planning.
 - **Energy and engagement:** Enthusiastic, has multiple ideas ready to go, encouraged follow-up questions. Fast mover — should respond well to brisk pacing.
 
+## /build
+
+### Step 2: Supabase project setup + database tables
+- What was built: Created Supabase project (etabovjtwcvkiszcjmaz). Ran SQL to create all five tables (user_profiles, training_plans, food_logs, injury_logs, quick_logs) with exact spec schemas. RLS enabled and policy added on all five tables. Real credentials filled into .env (VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY). supabaseClient.js was already correctly scaffolded from Step 1.
+- Verification observation: All 5 tables visible in Table Editor. Authentication → Policies confirmed all 5 tables have "Disable RLS" button (RLS enabled) and one policy each covering ALL operations.
+- Issues: None.
+
+### Step 1: Project scaffolding
+- What was built: Scaffolded full Vite + React project manually. Installed all dependencies (react-router-dom, tailwindcss, @supabase/supabase-js, @anthropic-ai/sdk). Configured Tailwind + PostCSS. Created all directories (src/pages, src/tabs, src/components, src/lib, src/hooks, api/, scripts/). Created placeholder exports for every file in the spec. Created .env.example, .env with placeholders, vercel.json with SPA rewrite, vite.config.js, index.html titled "FitCoach AI". Git initialized and committed.
+- Verification observation: `npm run dev` started Vite at localhost:5173 in 357ms with no errors.
+- Issues: `timeout` command not available on macOS (GNU coreutils not installed) — used background process + sleep instead. No functional impact.
+
 ## /checklist
 
 - **Sequencing decisions:** Foundation-first order: scaffolding → Supabase → auth → Claude proxy → onboarding → Quick Log → tabs → polish → deploy → Devpost. Alex initially wanted to start with Quick Log — explained the dependency chain (needs auth, tables, and Claude proxy to function) and he accepted the logic immediately.

@@ -10,13 +10,13 @@
 
 ## Checklist
 
-- [ ] **1. Project scaffolding**
+- [x] **1. Project scaffolding**
   Spec ref: `spec.md > Stack` and `spec.md > Runtime & Deployment` and `spec.md > File Structure`
   What to build: Scaffold a new Vite + React project. Install dependencies: `react-router-dom`, `tailwindcss`, `@supabase/supabase-js`, `@anthropic-ai/sdk`. Configure Tailwind. Create the full file/folder structure from the spec (`src/pages/`, `src/tabs/`, `src/components/`, `src/lib/`, `src/hooks/`, `api/`, `docs/`, `scripts/`). Create placeholder files for every component, page, tab, hook, and lib file listed in the spec — empty exports are fine. Create `.env.example` listing all three required env vars. Create `.env` with placeholder values. Create `vercel.json` with the SPA rewrite rule. Create `vite.config.js` with base config. Update `index.html` title to "FitCoach AI".
   Acceptance: `npm run dev` starts without errors. Browser shows a blank or placeholder page at `localhost:5173`. No missing import errors in the console.
   Verify: Run `npm run dev` and open `localhost:5173`. Confirm the page loads without a white-screen crash or console errors.
 
-- [ ] **2. Supabase project setup + database tables**
+- [x] **2. Supabase project setup + database tables**
   Spec ref: `spec.md > Data Model`
   What to build: Create a Supabase project (free tier). In the Supabase SQL editor, create all five tables: `user_profiles`, `training_plans`, `food_logs`, `injury_logs`, `quick_logs` — using the exact schemas from the spec. Enable Row Level Security on all five tables. Add RLS policy to each table: `user_id = auth.uid()` for SELECT, INSERT, UPDATE, DELETE. In `src/supabaseClient.js`, initialize the Supabase client using `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Copy real values from Supabase dashboard into `.env`.
   Acceptance: All five tables visible in Supabase dashboard with correct columns. RLS enabled on each. `supabaseClient.js` exports a working client.
