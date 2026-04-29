@@ -47,6 +47,10 @@
 - Verification observation: All 5 tables visible in Table Editor. Authentication → Policies confirmed all 5 tables have "Disable RLS" button (RLS enabled) and one policy each covering ALL operations.
 - Issues: None.
 
+### Step 3: Auth — login page + session management
+- What was built: Built `LoginPage.jsx` with email + password signup/login toggle, error + info message display, and post-auth navigation. Added `RequireAuth` wrapper to `App.jsx` that gates all `/app/*` and `/onboarding` routes — shows loading spinner while session is being checked, redirects to `/login` if no user. Built `AppLayout.jsx` with profile check on mount (queries `user_profiles` → redirects to `/onboarding` if no complete profile) and a fixed 4-tab bottom nav bar (Training, Nutrition, Body, Log) using `NavLink` with active-state highlighting. Build produced 84 modules with no errors.
+- Issues: None.
+
 ### Step 1: Project scaffolding
 - What was built: Scaffolded full Vite + React project manually. Installed all dependencies (react-router-dom, tailwindcss, @supabase/supabase-js, @anthropic-ai/sdk). Configured Tailwind + PostCSS. Created all directories (src/pages, src/tabs, src/components, src/lib, src/hooks, api/, scripts/). Created placeholder exports for every file in the spec. Created .env.example, .env with placeholders, vercel.json with SPA rewrite, vite.config.js, index.html titled "FitCoach AI". Git initialized and committed.
 - Verification observation: `npm run dev` started Vite at localhost:5173 in 357ms with no errors.
@@ -65,3 +69,8 @@
 - **Submission planning:** Quick Log identified as the "wow moment" for Devpost — universal input with AI auto-categorization is the demo opener. Plans to deploy live on Vercel. No GitHub repo yet — creation is baked into Step 11. Screenshots planned: Quick Log with AI response, Training Plan tab, Nutrition tab with macro bars.
 - **Deepening rounds:** 0 rounds. Alex moved straight through all questions and accepted the checklist as proposed. No deepening.
 - **Active shaping:** Alex correctly identified Quick Log as the most important piece and wanted to build it first — showed good product intuition. Accepted the sequencing rationale without resistance. Passively accepted all build preferences except comprehension checks (opted out). Did not question item granularity or order after the explanation.
+
+### Step 4: Claude API proxy (Vercel serverless function)
+- What was built: `api/claude.js` was already scaffolded in Step 1 with all 7 action stubs returning mock responses and Anthropic SDK initialized with `CLAUDE_API_KEY`. `src/lib/claude.js` fetch wrapper was also already in place. Linked the project to Vercel (`vercel link --yes`). Fixed `vercel.json` rewrite pattern to exclude Vite dev routes (`@`, `src/`, `node_modules/`, and file extensions) — the original broad pattern was intercepting Vite's HMR and module requests in `vercel dev`.
+- Verification observation: curl to `POST /api/claude` with `generate_onboarding_plan` returned `{"mock":true,"action":"generate_onboarding_plan","message":"Mock onboarding plan response"}`. App loaded at localhost:3000 showing the FitCoach AI login page cleanly after the vercel.json fix.
+- Issues: Original SPA rewrite rule `/((?!api/).*)` was too broad — intercepted Vite's `@vite/client`, `@react-refresh`, `src/main.jsx` routes and returned index.html instead. Fixed with pattern that excludes `@`-prefixed paths and file extensions.

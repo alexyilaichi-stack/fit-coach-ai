@@ -22,13 +22,13 @@
   Acceptance: All five tables visible in Supabase dashboard with correct columns. RLS enabled on each. `supabaseClient.js` exports a working client.
   Verify: Open Supabase dashboard → Table Editor. Confirm all five tables exist with the correct columns. Check that RLS is enabled (shield icon visible on each table).
 
-- [ ] **3. Auth — login page + session management**
+- [x] **3. Auth — login page + session management**
   Spec ref: `spec.md > Auth & Routing`
   What to build: Build `LoginPage.jsx` with email + password signup and login forms (toggle between the two). Implement `useAuth.js` hook exposing `user`, `signIn`, `signUp`, `signOut` using Supabase Auth. In `App.jsx`, set up React Router with routes: `/login`, `/onboarding`, `/app/training`, `/app/nutrition`, `/app/injury`, `/app/log`. Add auth guard logic: no session → redirect to `/login`; session but no profile → redirect to `/onboarding`; session + profile → stay on `/app/*`. Build `AppLayout.jsx` with a 4-tab bottom nav bar (Training, Nutrition, Injury, Quick Log) linking to the four `/app/*` routes. Tab pages can be empty placeholders for now.
   Acceptance: Can sign up with a new email. Can log in with that email. Logged-in state persists after browser refresh. Navigating to `/app/training` while logged out redirects to `/login`.
   Verify: Sign up with a test email. Refresh the page — confirm you stay logged in. Open an incognito window and go to `localhost:5173/app/training` — confirm it redirects to `/login`.
 
-- [ ] **4. Claude API proxy (Vercel serverless function)**
+- [x] **4. Claude API proxy (Vercel serverless function)**
   Spec ref: `spec.md > AI Integration Layer > api/claude.js`
   What to build: Create `api/claude.js` as a Vercel serverless function. It receives POST requests with `{ action, payload }`. Implement a switch on `action` with stubs for all seven actions: `generate_onboarding_plan`, `generate_training_plan`, `analyze_frequency`, `generate_meal_plan`, `recommend_remaining_meals`, `process_quick_log`, `swap_exercise`. For now, each stub returns a hardcoded mock response so the frontend can be wired up before prompts are finalized. Initialize the Anthropic SDK using `CLAUDE_API_KEY` (no `VITE_` prefix — server-side only). Set `CLAUDE_API_KEY` in `.env`. Implement `src/lib/claude.js` as a thin `fetch('/api/claude', { method: 'POST', body: JSON.stringify({ action, payload }) })` wrapper. Install the Vercel CLI (`npm i -g vercel`) and run `vercel dev` to test the function locally.
   Acceptance: `POST /api/claude` with `{ action: 'generate_onboarding_plan', payload: {} }` returns a mock response. The Anthropic SDK initializes without throwing (key is present). `lib/claude.js` can call the proxy from the browser without CORS errors.
