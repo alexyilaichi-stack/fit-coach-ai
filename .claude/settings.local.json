@@ -6,7 +6,22 @@
       "Bash(timeout 15 npm run dev)",
       "Bash(git init *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
+      "Bash(npx vite *)",
+      "Bash(pkill -f \"vite\")",
+      "Bash(vercel --version)",
+      "Bash(vercel whoami *)",
+      "Bash(node *)",
+      "Bash(vercel link *)",
+      "Bash(curl *)",
+      "Bash(npx tsc *)",
+      "WebFetch(domain:www.hevyapp.com)",
+      "WebFetch(domain:outlift.com)",
+      "Bash(sed -i '' \"s|from '../lib/i18n.js'|from '../lib/i18n.jsx'|g\" /Users/chiyilai/Desktop/my-hackathon-project/src/tabs/TrainingTab.jsx /Users/chiyilai/Desktop/my-hackathon-project/src/tabs/QuickLogTab.jsx /Users/chiyilai/Desktop/my-hackathon-project/src/components/LogFeedback.jsx /Users/chiyilai/Desktop/my-hackathon-project/src/pages/AppLayout.jsx)",
+      "Bash(sed -i '' \"s|from './lib/i18n.js'|from './lib/i18n.jsx'|g\" /Users/chiyilai/Desktop/my-hackathon-project/src/App.jsx)",
+      "Bash(vercel env *)"
     ]
   }
 }
