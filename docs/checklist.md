@@ -70,7 +70,7 @@
   Acceptance: Loading spinners appear during all Claude calls. Training tab shows previous plan on failure. Quick Log shows retry button on failure. Seed script runs without errors and populates all four tables.
   Verify: Run `node scripts/seed.js` with a fresh Supabase account credentials. Open Supabase Table Editor and confirm all four tables have seed data. Temporarily break the Claude API key to trigger error states — confirm spinners and fallback messages appear.
 
-- [ ] **11. GitHub repo + Vercel deployment**
+- [x] **11. GitHub repo + Vercel deployment**
   Spec ref: `spec.md > Runtime & Deployment`
   What to build: Create a new public GitHub repository named "fitcoach-ai". Initialize git in the project root (`git init`). Create `.gitignore` that excludes `.env`, `node_modules/`. Add the GitHub remote and push all code. Link the GitHub repo to a new Vercel project (via `vercel.com` dashboard or `vercel` CLI). Add all three environment variables to Vercel dashboard (Settings → Environment Variables): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `CLAUDE_API_KEY`. Trigger a deployment and confirm the live URL works end-to-end — create account, complete onboarding, submit a Quick Log.
   Acceptance: Code is live on GitHub. Vercel deployment succeeds (green checkmark). Live URL loads the app. Can sign up and complete onboarding on the live URL. All three env vars are set in Vercel dashboard.
