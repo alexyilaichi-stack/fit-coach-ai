@@ -419,6 +419,6 @@ Rules:
     return res.status(200).json(result)
   } catch (err) {
     console.error('Claude proxy error:', err)
-    return res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error', detail: err?.message, type: err?.constructor?.name })
   }
 }
