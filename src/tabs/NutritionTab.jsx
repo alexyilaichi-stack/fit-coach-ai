@@ -98,14 +98,16 @@ export default function NutritionTab() {
     setShowHistory(true)
     if (historyLogs !== null) return
     setHistoryLoading(true)
-    const today = new Date().toISOString().split('T')[0]
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const startOfToday = new Date()
+    startOfToday.setHours(0, 0, 0, 0)
+    const sevenDaysAgo = new Date(startOfToday)
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
     const { data } = await supabase
       .from('food_logs')
       .select('*')
       .eq('user_id', user.id)
-      .lt('logged_at', `${today}T00:00:00`)
-      .gte('logged_at', `${sevenDaysAgo}T00:00:00`)
+      .lt('logged_at', startOfToday.toISOString())
+      .gte('logged_at', sevenDaysAgo.toISOString())
       .order('logged_at', { ascending: false })
     setHistoryLogs(data || [])
     setHistoryLoading(false)

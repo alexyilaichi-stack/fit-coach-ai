@@ -8,14 +8,15 @@ export function useTodayLogs(userId) {
 
   useEffect(() => {
     if (!userId) return
-    const today = new Date().toISOString().split('T')[0]
+    const startOfToday = new Date()
+    startOfToday.setHours(0, 0, 0, 0)
 
     Promise.all([
       supabase
         .from('food_logs')
         .select('*')
         .eq('user_id', userId)
-        .gte('logged_at', `${today}T00:00:00`)
+        .gte('logged_at', startOfToday.toISOString())
         .order('logged_at', { ascending: true }),
       supabase
         .from('injury_logs')
