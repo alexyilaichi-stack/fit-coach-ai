@@ -38,8 +38,21 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 async function seed() {
   console.log(`Signing in as ${EMAIL}...`)
-  const { data: { session }, error: authError } = await supabase.auth.signInWithPassword({ email: EMAIL, password: PASSWORD })
-  if (authError) { console.error('Auth failed:', authError.message); process.exit(1) }
+  let session
+  const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email: EMAIL, password: PASSWORD })
+  if (signInError) {
+    console.log('  Sign-in failed, attempting sign-up...')
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email: EMAIL, password: PASSWORD })
+    if (signUpError) { console.error('Auth failed:', signUpError.message); process.exit(1) }
+    if (!signUpData.session) {
+      console.error('Sign-up succeeded but no session — email confirmation is required.')
+      console.error('Go to Supabase dashboard → Authentication → Settings → disable "Enable email confirmations", then re-run.')
+      process.exit(1)
+    }
+    session = signUpData.session
+  } else {
+    session = signInData.session
+  }
 
   const userId = session.user.id
   const today = new Date().toISOString().split('T')[0]

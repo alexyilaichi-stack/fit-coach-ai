@@ -12,6 +12,15 @@ export default function LoginPage() {
   const { signIn, signUp } = useAuth()
   const navigate = useNavigate()
 
+  const handleDemo = async () => {
+    setError('')
+    setLoading(true)
+    const { error: signInError } = await signIn('demo@fitcoach.ai', 'fitcoachdemo')
+    setLoading(false)
+    if (signInError) setError('Demo account unavailable — try signing up instead.')
+    else navigate('/app/training', { replace: true })
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
@@ -110,7 +119,18 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-zinc-100 text-center">
+          <div className="mt-5">
+            <button
+              type="button"
+              onClick={handleDemo}
+              disabled={loading}
+              className="w-full py-3 rounded-xl border-2 border-dashed border-zinc-200 hover:border-orange-300 hover:bg-orange-50 text-sm font-medium text-zinc-500 hover:text-orange-600 transition-all disabled:opacity-50"
+            >
+              Try demo — no account needed
+            </button>
+          </div>
+
+          <div className="mt-5 pt-5 border-t border-zinc-100 text-center">
             <button
               onClick={() => { setIsSignUp(s => !s); setError(''); setMessage('') }}
               className="text-sm text-zinc-400 hover:text-zinc-700 transition-colors"
