@@ -4,11 +4,27 @@ import { useProfile } from '../hooks/useProfile.js'
 import { useTodayLogs } from '../hooks/useTodayLogs.js'
 import { callClaude } from '../lib/claude.js'
 import { useLanguage } from '../lib/i18n.jsx'
+import { supabase } from '../supabaseClient.js'
 import MacroBar from '../components/MacroBar.jsx'
 import FoodEntry from '../components/FoodEntry.jsx'
 
 function sum(logs, field) {
   return Math.round(logs.reduce((acc, l) => acc + (l[field] || 0), 0))
+}
+
+function formatDateHeader(dateStr, lang) {
+  const d = new Date(dateStr + 'T12:00:00')
+  return d.toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', weekday: 'short' })
+}
+
+function groupByDate(logs) {
+  const map = {}
+  for (const log of logs) {
+    const date = new Date(log.logged_at).toLocaleDateString('en-CA') // YYYY-MM-DD in local time
+    if (!map[date]) map[date] = []
+    map[date].push(log)
+  }
+  return Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]))
 }
 
 export default function NutritionTab() {
@@ -23,6 +39,10 @@ export default function NutritionTab() {
   const [recLoading, setRecLoading] = useState(false)
   const [planError, setPlanError] = useState(null)
   const [recError, setRecError] = useState(null)
+
+  const [showHistory, setShowHistory] = useState(false)
+  const [historyLogs, setHistoryLogs] = useState(null)
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   const targets = {
     calories: profile?.daily_calories || 2000,
@@ -71,6 +91,24 @@ export default function NutritionTab() {
       setRemaining(result.recommendation || result.message || result)
     } catch { setRecError(t('nutrition.error_rec')) }
     finally { setRecLoading(false) }
+  }
+
+  async function toggleHistory() {
+    if (showHistory) { setShowHistory(false); return }
+    setShowHistory(true)
+    if (historyLogs !== null) return
+    setHistoryLoading(true)
+    const today = new Date().toISOString().split('T')[0]
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const { data } = await supabase
+      .from('food_logs')
+      .select('*')
+      .eq('user_id', user.id)
+      .lt('logged_at', `${today}T00:00:00`)
+      .gte('logged_at', `${sevenDaysAgo}T00:00:00`)
+      .order('logged_at', { ascending: false })
+    setHistoryLogs(data || [])
+    setHistoryLoading(false)
   }
 
   // Re-clear AI suggestions if language changes
@@ -166,6 +204,52 @@ export default function NutritionTab() {
           )}
         </div>
       )}
+
+      {/* History */}
+      <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
+        <button
+          onClick={toggleHistory}
+          className="w-full flex items-center justify-between px-4 py-3.5 text-left hover:bg-zinc-50 transition-colors"
+        >
+          <span className="text-sm font-semibold text-zinc-700">{t('nutrition.history')}</span>
+          <span className="text-xs text-zinc-400 flex items-center gap-1">
+            {showHistory ? t('nutrition.hide_history') : t('nutrition.show_history')}
+            <svg className={`w-4 h-4 transition-transform ${showHistory ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </span>
+        </button>
+        {showHistory && (
+          <div className="px-4 pb-4">
+            {historyLoading ? (
+              <div className="flex items-center gap-2 text-sm text-zinc-400 py-2">
+                <div className="w-4 h-4 border-2 border-zinc-300 border-t-transparent rounded-full animate-spin" />
+                {t('nutrition.history_loading')}
+              </div>
+            ) : !historyLogs || historyLogs.length === 0 ? (
+              <p className="text-sm text-zinc-400 py-2">{t('nutrition.history_empty')}</p>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {groupByDate(historyLogs).map(([date, entries]) => (
+                  <div key={date}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+                        {formatDateHeader(date, lang)}
+                      </span>
+                      <span className="text-xs font-semibold text-zinc-400">
+                        {sum(entries, 'calories')} kcal · {sum(entries, 'protein_g')}P · {sum(entries, 'carbs_g')}C · {sum(entries, 'fat_g')}F
+                      </span>
+                    </div>
+                    <div className="bg-zinc-50 rounded-xl px-3 divide-y divide-zinc-100">
+                      {entries.map(entry => <FoodEntry key={entry.id} entry={entry} />)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Meal plan */}
       <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 flex flex-col gap-3">

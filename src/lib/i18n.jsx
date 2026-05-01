@@ -113,6 +113,11 @@ const T = {
     'nutrition.get_plan':        'Generate meal plan',
     'nutrition.get_remaining':   'What should I eat next?',
     'nutrition.kcal':            'kcal',
+    'nutrition.history':         'Food History',
+    'nutrition.show_history':    'Show past 7 days',
+    'nutrition.hide_history':    'Hide history',
+    'nutrition.history_empty':   'No food logged in the past 7 days.',
+    'nutrition.history_loading': 'Loading history...',
 
     // Common
     'common.retry':     'Retry',
@@ -232,6 +237,11 @@ const T = {
     'nutrition.get_plan':        '生成饮食计划',
     'nutrition.get_remaining':   '我接下来该吃什么？',
     'nutrition.kcal':            '千卡',
+    'nutrition.history':         '饮食历史',
+    'nutrition.show_history':    '查看过去7天',
+    'nutrition.hide_history':    '收起历史',
+    'nutrition.history_empty':   '过去7天暂无饮食记录',
+    'nutrition.history_loading': '正在加载历史…',
 
     // Common
     'common.retry':     '重试',
