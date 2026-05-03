@@ -108,13 +108,24 @@ function saveFreqCache(userId, note) {
   try { localStorage.setItem(freqCacheKey(userId), JSON.stringify({ note, ts: Date.now() })) } catch {}
 }
 
-function HistoryEntry({ plan }) {
+function formatSetsData(setsData = []) {
+  if (!setsData?.length) return ''
+  return setsData.map(s => {
+    if (s.weight == null && !s.reps && !s.sets) return ''
+    const w = s.weight != null ? `${s.weight}${s.weight_unit || 'lbs'}` : ''
+    const r = s.reps ? `×${s.reps}` : ''
+    const n = (s.sets && s.sets > 1) ? `×${s.sets}` : ''
+    return [w, r, n].filter(Boolean).join('')
+  }).filter(Boolean).join(' / ')
+}
+
+function WorkoutLogEntry({ session }) {
   const [open, setOpen] = useState(false)
-  const normalized = normalizePlan(plan.plan_json)
-  const exercises = normalized?.exercises || []
-  const focus = normalized?.workout_focus || normalized?.workout_type || 'Workout'
-  const date = new Date(plan.plan_date + 'T00:00:00')
-  const label = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  const { lang } = useLanguage()
+  const date = new Date(session.workout_date + 'T12:00:00')
+  const label = date.toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  const sets = [...(session.workout_sets || [])].sort((a, b) => (a.set_order ?? 0) - (b.set_order ?? 0))
+  const mainCount = sets.filter(s => !s.is_warmup).length
 
   return (
     <div className="border border-zinc-100 rounded-2xl overflow-hidden shadow-sm">
@@ -124,18 +135,20 @@ function HistoryEntry({ plan }) {
       >
         <div className="flex flex-col items-start">
           <span className="text-sm font-semibold text-zinc-900">{label}</span>
-          <span className="text-xs text-zinc-400 mt-0.5">{focus}</span>
+          <span className="text-xs text-zinc-400 mt-0.5">
+            {lang === 'zh' ? `${mainCount} 个动作` : `${mainCount} exercises`}
+          </span>
         </div>
         <svg className={`w-4 h-4 text-zinc-400 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {open && exercises.length > 0 && (
-        <div className="px-4 pb-3 pt-2 bg-zinc-50 flex flex-col gap-1">
-          {exercises.map((ex, i) => (
-            <div key={i} className="flex items-center justify-between text-xs text-zinc-500 py-1.5 border-b border-zinc-100 last:border-0">
-              <span className="text-zinc-700 font-medium">{ex.exercise}</span>
-              <span>{ex.sets}×{ex.reps} @ {ex.weight_kg}kg</span>
+      {open && sets.length > 0 && (
+        <div className="px-4 pb-3 pt-2 bg-zinc-50 flex flex-col">
+          {sets.map((s, i) => (
+            <div key={i} className={`flex items-center justify-between py-1.5 border-b border-zinc-100 last:border-0 ${s.is_warmup ? 'opacity-50' : ''}`}>
+              <span className={`text-xs font-medium ${s.is_warmup ? 'text-zinc-400' : 'text-zinc-700'}`}>{s.exercise}</span>
+              <span className="text-xs text-zinc-400 ml-2 text-right">{formatSetsData(s.sets_data)}</span>
             </div>
           ))}
         </div>
@@ -295,11 +308,17 @@ export default function TrainingTab() {
   async function loadHistory(userId) {
     setLoadingHistory(true)
     try {
-      const { data } = await supabase.from('training_plans').select('id, plan_date, plan_json, frequency_note').eq('user_id', userId).order('plan_date', { ascending: false }).limit(30)
-      setHistory((data || []).filter(p => p.plan_date !== todayStr()))
+      const { data } = await supabase
+        .from('workout_sessions')
+        .select('id, workout_date, workout_sets(id, exercise, sets_data, is_warmup, set_order)')
+        .eq('user_id', userId)
+        .order('workout_date', { ascending: false })
+        .limit(30)
+      setHistory(data || [])
     } catch {}
     finally { setLoadingHistory(false) }
   }
+
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -519,7 +538,7 @@ export default function TrainingTab() {
           {swapError && <p className="text-sm text-red-500">{swapError}</p>}
         </div>
 
-        {/* Training history */}
+        {/* Workout history */}
         {showHistory && (
           <div className="flex flex-col gap-3 mt-1">
             <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">{t('training.history_title')}</p>
@@ -531,7 +550,7 @@ export default function TrainingTab() {
             ) : history.length === 0 ? (
               <p className="text-sm text-zinc-400">{t('training.history_empty')}</p>
             ) : (
-              history.map(plan => <HistoryEntry key={plan.id} plan={plan} />)
+              history.map(session => <WorkoutLogEntry key={session.id} session={session} />)
             )}
           </div>
         )}

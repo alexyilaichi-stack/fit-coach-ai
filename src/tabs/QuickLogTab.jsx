@@ -86,6 +86,9 @@ function primaryRoute(categories) {
   return '/app/training'
 }
 
+const DEFAULTS_ZH = ['鸡胸肉', '米饭', '燕麦', '鸡蛋', '牛奶', '麻辣烫', '沙拉', '蛋白粉']
+const DEFAULTS_EN = ['Chicken', 'Rice', 'Oatmeal', 'Eggs', 'Milk', 'Salad', 'Protein shake', 'Banana']
+
 export default function QuickLogTab() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -99,6 +102,13 @@ export default function QuickLogTab() {
   const [feedback, setFeedback] = useState(null)
   const [photoConfirm, setPhotoConfirm] = useState(null)
   const [recentLogs, setRecentLogs] = useState([])
+  const [favorites, setFavorites] = useState([])
+  const [selectedFoods, setSelectedFoods] = useState([])
+  const [showWorkoutLog, setShowWorkoutLog] = useState(false)
+  const [workoutInput, setWorkoutInput] = useState('')
+  const [workoutParsing, setWorkoutParsing] = useState(false)
+  const [workoutError, setWorkoutError] = useState(null)
+  const [workoutSuccess, setWorkoutSuccess] = useState(false)
 
   const loadRecentLogs = useCallback(async () => {
     if (!user?.id) return
@@ -111,7 +121,33 @@ export default function QuickLogTab() {
     setRecentLogs(data || [])
   }, [user?.id])
 
-  useEffect(() => { loadRecentLogs() }, [loadRecentLogs])
+  const loadFavorites = useCallback(async () => {
+    if (!user?.id) return
+    const { data } = await supabase
+      .from('food_logs')
+      .select('description')
+      .eq('user_id', user.id)
+      .limit(300)
+    const counts = {}
+    for (const { description } of data || []) {
+      if (description) counts[description] = (counts[description] || 0) + 1
+    }
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name]) => name)
+    setFavorites(sorted)
+  }, [user?.id])
+
+  useEffect(() => { loadRecentLogs(); loadFavorites() }, [loadRecentLogs, loadFavorites])
+
+  function toggleFavorite(name) {
+    setSelectedFoods(prev => {
+      if (prev.find(f => f.name === name)) return prev.filter(f => f.name !== name)
+      return [...prev, { name, qty: lang === 'zh' ? '一份' : '1 serving' }]
+    })
+  }
+
+  function updateQty(name, qty) {
+    setSelectedFoods(prev => prev.map(f => f.name === name ? { ...f, qty } : f))
+  }
 
   const todayStr = new Date().toLocaleDateString('en-CA')
   const [logDate, setLogDate] = useState(todayStr)
@@ -162,15 +198,16 @@ export default function QuickLogTab() {
   }
 
   async function handleTextSubmit() {
-    if (!text.trim()) return
+    const foodPart = selectedFoods.map(f => `${f.name} ${f.qty}`).join('、')
+    const rawInput = [foodPart, text.trim()].filter(Boolean).join('，另外')
+    if (!rawInput) return
     setError(null); setFeedback(null); setLoading(true); setLoadingLabel(t('quicklog.analyzing'))
     try {
-      // Fetch active injuries so Claude can identify which ones are being resolved
       const { data: activeInjuries } = await supabase
         .from('injury_logs').select('id, description').eq('user_id', user.id).eq('is_active', true)
       const result = await callClaude('process_quick_log', {
         mode: 'text',
-        raw_input: text.trim(),
+        raw_input: rawInput,
         profile: profilePayload,
         active_injuries: (activeInjuries || []).map(i => ({ id: i.id, description: i.description })),
       }, lang)
@@ -178,12 +215,31 @@ export default function QuickLogTab() {
       const saves = []
       if (result.food) saves.push(saveFoodLog(result.food, null, loggedAt))
       if (result.injury) saves.push(saveInjuryLog(result.injury, result.resolves || []))
-      saves.push(saveQuickLog(text.trim(), result.categories, result.ai_response, null, loggedAt))
+      saves.push(saveQuickLog(rawInput, result.categories, result.ai_response, null, loggedAt))
       await Promise.all(saves)
-      setFeedback({ categories: result.categories, aiResponse: result.ai_response, destRoute: primaryRoute(result.categories), logDate: isToday ? null : logDate })
-      setText('')
-      setLogDate(todayStr)
-      loadRecentLogs()
+      setFeedback({ categories: result.categories, aiResponse: result.ai_response, destRoute: primaryRoute(result.categories) })
+      setText(''); setSelectedFoods([]); setLogDate(todayStr)
+      loadRecentLogs(); loadFavorites()
+      // Fire-and-forget: save structured sets when workout with weight data detected
+      const hasWeightData = /\d+\s*(磅|lbs|kg)/i.test(rawInput) || /\d+[*×]\d+/.test(rawInput)
+      if (result.categories.includes('workout') && hasWeightData) {
+        callClaude('parse_workout_log', { raw_input: rawInput }, lang)
+          .then(async parsed => {
+            for (const session of parsed.sessions || []) {
+              const { data: existing } = await supabase.from('workout_sessions').select('id').eq('user_id', user.id).eq('workout_date', session.date).maybeSingle()
+              let sessionId
+              if (existing) { sessionId = existing.id }
+              else {
+                const { data } = await supabase.from('workout_sessions').insert({ user_id: user.id, workout_date: session.date }).select().single()
+                sessionId = data?.id
+              }
+              if (!sessionId) continue
+              const rows = (session.exercises || []).map((ex, i) => ({ session_id: sessionId, user_id: user.id, exercise: ex.exercise, sets_data: ex.sets_data || [], is_warmup: ex.is_warmup || false, set_order: ex.order ?? i }))
+              if (rows.length) await supabase.from('workout_sets').insert(rows)
+            }
+          })
+          .catch(() => {})
+      }
     } catch { setError(t('quicklog.error_general')) }
     finally { setLoading(false); setLoadingLabel('') }
   }
@@ -233,6 +289,30 @@ export default function QuickLogTab() {
     finally { setLoading(false); setLoadingLabel('') }
   }
 
+  async function handleWorkoutLog() {
+    if (!workoutInput.trim()) return
+    setWorkoutParsing(true); setWorkoutError(null); setWorkoutSuccess(false)
+    try {
+      const parsed = await callClaude('parse_workout_log', { raw_input: workoutInput.trim() }, lang)
+      for (const session of parsed.sessions || []) {
+        const { data: existing } = await supabase.from('workout_sessions').select('id').eq('user_id', user.id).eq('workout_date', session.date).maybeSingle()
+        let sessionId
+        if (existing) {
+          sessionId = existing.id
+          await supabase.from('workout_sets').delete().eq('session_id', sessionId)
+        } else {
+          const { data } = await supabase.from('workout_sessions').insert({ user_id: user.id, workout_date: session.date }).select().single()
+          sessionId = data?.id
+        }
+        if (!sessionId) continue
+        const rows = (session.exercises || []).map((ex, i) => ({ session_id: sessionId, user_id: user.id, exercise: ex.exercise, sets_data: ex.sets_data || [], is_warmup: ex.is_warmup || false, set_order: ex.order ?? i }))
+        if (rows.length) await supabase.from('workout_sets').insert(rows)
+      }
+      setWorkoutSuccess(true); setWorkoutInput('')
+    } catch { setWorkoutError(t('training.log_error')) }
+    finally { setWorkoutParsing(false) }
+  }
+
   return (
     <div className="flex flex-col min-h-full bg-zinc-50 p-4 gap-4 pt-16">
       <div>
@@ -267,9 +347,55 @@ export default function QuickLogTab() {
           )}
         </div>
 
+        {/* Favorite food chips */}
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+          {(favorites.length > 0 ? favorites : (lang === 'zh' ? DEFAULTS_ZH : DEFAULTS_EN)).map(name => {
+            const selected = selectedFoods.some(f => f.name === name)
+            return (
+              <button
+                key={name}
+                onClick={() => toggleFavorite(name)}
+                disabled={loading}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                  selected
+                    ? 'bg-orange-500 text-white border-orange-500'
+                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-orange-300 hover:text-orange-500'
+                }`}
+              >
+                {name}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Selected food blocks */}
+        {selectedFoods.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {selectedFoods.map(f => (
+              <div key={f.name} className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+                <span className="text-sm font-medium text-orange-700 flex-1">{f.name}</span>
+                <input
+                  type="text"
+                  value={f.qty}
+                  onChange={e => updateQty(f.name, e.target.value)}
+                  className="w-24 bg-white border border-orange-200 rounded-lg px-2 py-1 text-xs text-zinc-700 text-center focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+                <button
+                  onClick={() => toggleFavorite(f.name)}
+                  className="w-5 h-5 flex items-center justify-center text-orange-400 hover:text-orange-600 transition-colors"
+                >
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <button
           onClick={handleTextSubmit}
-          disabled={loading || !text.trim()}
+          disabled={loading || (!text.trim() && selectedFoods.length === 0)}
           className="w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-semibold text-sm transition-all active:scale-95 shadow-sm shadow-orange-100"
         >
           {loading && loadingLabel ? loadingLabel : t('quicklog.submit')}
@@ -318,6 +444,47 @@ export default function QuickLogTab() {
           </svg>
           <span className="text-xs font-medium text-zinc-600">{t('quicklog.apple_health')}</span>
         </button>
+      </div>
+
+      {/* Workout notes paste section */}
+      <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
+        <button
+          onClick={() => { setShowWorkoutLog(v => !v); setWorkoutSuccess(false); setWorkoutError(null) }}
+          className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-zinc-50 transition-colors"
+        >
+          <div className="flex items-center gap-2.5">
+            <svg className="w-5 h-5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+            </svg>
+            <span className="text-sm font-medium text-zinc-700">{t('quicklog.workout_notes')}</span>
+          </div>
+          <svg className={`w-4 h-4 text-zinc-400 transition-transform ${showWorkoutLog ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {showWorkoutLog && (
+          <div className="px-4 pb-4 border-t border-zinc-50 flex flex-col gap-2">
+            <textarea
+              value={workoutInput}
+              onChange={e => setWorkoutInput(e.target.value)}
+              placeholder={t('training.log_workout_placeholder')}
+              rows={8}
+              disabled={workoutParsing}
+              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 resize-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent disabled:opacity-50 font-mono leading-relaxed mt-2"
+            />
+            {workoutSuccess && <p className="text-xs text-emerald-600 font-medium">{t('training.log_success')}</p>}
+            {workoutError && <p className="text-xs text-red-500">{workoutError}</p>}
+            <button
+              onClick={handleWorkoutLog}
+              disabled={workoutParsing || !workoutInput.trim()}
+              className="w-full py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-semibold text-sm transition-all active:scale-95 shadow-sm shadow-orange-100 flex items-center justify-center gap-2"
+            >
+              {workoutParsing ? (
+                <><div className="w-3.5 h-3.5 border-2 border-white/60 border-t-transparent rounded-full animate-spin" />{t('training.parsing')}</>
+              ) : t('training.log_workout_btn')}
+            </button>
+          </div>
+        )}
       </div>
 
       <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="hidden"

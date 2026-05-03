@@ -160,6 +160,37 @@ Rules:
         break
       }
 
+      case 'parse_workout_log': {
+        const p = payload
+        const today = new Date().toISOString().split('T')[0]
+        const text = await claude(
+          `You are a strength training log parser. Parse workout text into structured JSON.
+Unit rules: "磅" = lbs, "kg" = kg. If ambiguous, default to lbs.
+Input may contain one or multiple days.
+Return ONLY valid JSON (no markdown):
+{ "sessions": [{ "date": "YYYY-MM-DD", "exercises": [{ "exercise": string, "is_warmup": boolean, "sets_data": [{ "weight": number|null, "weight_unit": "lbs"|"kg"|null, "sets": number|null, "reps": string|null }], "order": number }] }] }
+Parsing rules:
+1. "高位下拉85磅*10 100磅 2*10" → [{weight:85,weight_unit:"lbs",sets:1,reps:"10"},{weight:100,weight_unit:"lbs",sets:2,reps:"10"}]
+2. "面拉50磅*8 45磅*12" → 2 entries each with sets:1
+3. "热身2组" or "热身1组" → is_warmup:true, sets_data:[{weight:null,sets:2,reps:null}]
+4. "划船" (no numbers) → sets_data:[{weight:null,sets:null,reps:null}]
+5. Slash reps "8/8/7" or "10/9/7" means multiple sets at same weight → single entry, reps:"8/8/7"
+6. Weight directly followed by reps without * or space: "25磅10/9/7" → weight:25,weight_unit:"lbs",sets:1,reps:"10/9/7"
+7. Mixed weight slash "32/30kg*6/6" → two entries: {weight:32,weight_unit:"kg",sets:1,reps:"6"} and {weight:30,weight_unit:"kg",sets:1,reps:"6"}
+8. Drop set with + "50kg*8+42.5kg*5" → two entries: {weight:50,weight_unit:"kg",sets:1,reps:"8"} and {weight:42.5,weight_unit:"kg",sets:1,reps:"5"}
+9. No unit given (e.g. "20*12") → default lbs
+10. Ignore trailing slashes at end of tokens (e.g. "20*12/" → same as "20*12")
+11. Ignore parenthetical notes like （勉强）（累）（力竭）— strip them from parsing
+12. Date: "20250427"→"2025-04-27". If no date found, use today: ${today}
+13. Multiple days separated by blank lines or new date headers = multiple sessions in the array
+${langInstruction(p.language)}`,
+          p.raw_input,
+          { max_tokens: 2048 }
+        )
+        result = parseJSON(text)
+        break
+      }
+
       case 'swap_exercise': {
         const p = payload
         const planText = (p.current_plan || []).map((e, i) => `${i + 1}. ${e.exercise}: ${e.sets}×${e.reps} @ ${e.weight_kg}kg`).join('\n')

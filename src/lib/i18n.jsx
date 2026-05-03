@@ -36,9 +36,15 @@ const T = {
     'training.swap_btn':        'Swap',
     'training.swap_error':      'Could not update plan — try again',
     'training.history_btn':     'History',
-    'training.history_title':   'Past Workouts',
+    'training.history_title':   'Workout History',
     'training.history_loading': 'Loading history...',
-    'training.history_empty':   'No past workouts yet.',
+    'training.history_empty':   'No workouts logged yet. Use "Log Workout" below to add your first session.',
+    'training.log_workout':         'Log Workout',
+    'training.log_workout_placeholder': 'Paste your workout notes...\ne.g.:\n20250430\nLat Pulldown 85lbs×10, 100lbs 2×10\nSeated Row 100lbs 3×10\nFace Pull 50lbs×8, 45lbs×12',
+    'training.log_workout_btn':     'Parse & Save',
+    'training.log_success':         'Workout saved!',
+    'training.log_error':           'Could not parse workout — try again',
+    'training.parsing':             'Parsing workout...',
 
     // Quick Log
     'quicklog.title':          'Quick Log',
@@ -60,6 +66,7 @@ const T = {
     'quicklog.error_save':     'Could not save — try again',
     'quicklog.go_nutrition':   'Go to Nutrition →',
     'quicklog.go_training':    'Go to Training →',
+    'quicklog.workout_notes':  'Workout Notes',
 
     // Log feedback badges
     'feedback.food':         'Logged to Nutrition',
@@ -177,9 +184,15 @@ const T = {
     'training.swap_btn':        '替换',
     'training.swap_error':      '无法更新计划 — 请重试',
     'training.history_btn':     '历史',
-    'training.history_title':   '历史训练',
+    'training.history_title':   '训练记录',
     'training.history_loading': '正在加载历史…',
-    'training.history_empty':   '暂无历史训练记录',
+    'training.history_empty':   '暂无训练记录，在下方"记录训练"里添加第一条吧',
+    'training.log_workout':         '记录训练',
+    'training.log_workout_placeholder': '粘贴你的训练记录...\n例如：\n20250430\n高位下拉85磅*10 100磅 2*10\n窄握下拉100磅3*10\n面拉50磅*8 45磅*12',
+    'training.log_workout_btn':     '解析并保存',
+    'training.log_success':         '训练已保存！',
+    'training.log_error':           '解析失败 — 请重试',
+    'training.parsing':             '正在解析...',
 
     // Quick Log
     'quicklog.title':          '快速记录',
@@ -201,6 +214,7 @@ const T = {
     'quicklog.error_save':     '无法保存 — 请重试',
     'quicklog.go_nutrition':   '前往营养 →',
     'quicklog.go_training':    '前往训练 →',
+    'quicklog.workout_notes':  '训练记录',
 
     // Log feedback badges
     'feedback.food':         '已记录到营养',
