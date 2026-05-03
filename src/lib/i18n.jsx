@@ -119,8 +119,12 @@ const T = {
     'nutrition.hide_history':    'Hide history',
     'nutrition.history_empty':   'No food logged in the past 7 days.',
     'nutrition.history_loading': 'Loading history...',
-    'nutrition.trend_title':     '14-Day Trend',
-    'nutrition.trend_target':    'Target',
+    'nutrition.trend_title':        '14-Day Trend',
+    'nutrition.trend_target':       'Target',
+    'nutrition.past_log_label':     'Log a past meal',
+    'nutrition.past_log_placeholder': 'e.g. had a chicken sandwich and orange juice for lunch',
+    'nutrition.past_log_submit':    'Log it',
+    'nutrition.past_not_food':      'Could not identify food — try describing a meal or drink',
 
     // Common
     'common.retry':     'Retry',
@@ -246,8 +250,12 @@ const T = {
     'nutrition.hide_history':    '收起历史',
     'nutrition.history_empty':   '过去7天暂无饮食记录',
     'nutrition.history_loading': '正在加载历史…',
-    'nutrition.trend_title':     '14天趋势',
-    'nutrition.trend_target':    '目标',
+    'nutrition.trend_title':        '14天趋势',
+    'nutrition.trend_target':       '目标',
+    'nutrition.past_log_label':     '补录历史饮食',
+    'nutrition.past_log_placeholder': '例如：昨天午饭吃了鸡肉三明治和橙汁',
+    'nutrition.past_log_submit':    '记录',
+    'nutrition.past_not_food':      '未能识别食物，请描述具体的餐食或饮料',
 
     // Common
     'common.retry':     '重试',
