@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth.js'
 import { useProfile } from '../hooks/useProfile.js'
 import { useLanguage } from '../lib/i18n.jsx'
 import InjuryEntry from '../components/InjuryEntry.jsx'
+import WorkoutFrequency from '../components/WorkoutFrequency.jsx'
 
 const GOAL_KEYS = { weight_loss: 'body.goal.weight_loss', muscle_gain: 'body.goal.muscle_gain', other: 'body.goal.other' }
 
@@ -220,6 +221,9 @@ export default function InjuryTab() {
           <StatRow label={t('body.fat')} value={profile.daily_fat_g} unit="g" />
         </div>
       )}
+
+      {/* Workout frequency chart */}
+      <WorkoutFrequency userId={user?.id} />
 
       {/* Condition history */}
       <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">

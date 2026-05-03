@@ -91,6 +91,7 @@ const T = {
     'body.goal.other':        'Other',
     'body.conditions':        'Condition Log',
     'body.no_conditions':     'No conditions logged yet.',
+    'body.workout_frequency': 'Workout Frequency',
     'body.active':            'Active',
     'body.resolved':          'Resolved',
     'body.saving':            'Saving...',
@@ -118,6 +119,8 @@ const T = {
     'nutrition.hide_history':    'Hide history',
     'nutrition.history_empty':   'No food logged in the past 7 days.',
     'nutrition.history_loading': 'Loading history...',
+    'nutrition.trend_title':     '14-Day Trend',
+    'nutrition.trend_target':    'Target',
 
     // Common
     'common.retry':     'Retry',
@@ -215,6 +218,7 @@ const T = {
     'body.goal.other':        '其他',
     'body.conditions':        '身体状况记录',
     'body.no_conditions':     '暂无记录',
+    'body.workout_frequency': '训练频率',
     'body.active':            '未解决',
     'body.resolved':          '已解决',
     'body.saving':            '正在保存…',
@@ -242,6 +246,8 @@ const T = {
     'nutrition.hide_history':    '收起历史',
     'nutrition.history_empty':   '过去7天暂无饮食记录',
     'nutrition.history_loading': '正在加载历史…',
+    'nutrition.trend_title':     '14天趋势',
+    'nutrition.trend_target':    '目标',
 
     // Common
     'common.retry':     '重试',

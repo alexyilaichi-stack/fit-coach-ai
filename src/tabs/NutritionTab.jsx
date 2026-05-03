@@ -7,6 +7,7 @@ import { useLanguage } from '../lib/i18n.jsx'
 import { supabase } from '../supabaseClient.js'
 import MacroBar from '../components/MacroBar.jsx'
 import FoodEntry from '../components/FoodEntry.jsx'
+import NutritionTrend from '../components/NutritionTrend.jsx'
 
 function sum(logs, field) {
   return Math.round(logs.reduce((acc, l) => acc + (l[field] || 0), 0))
@@ -206,6 +207,9 @@ export default function NutritionTab() {
           )}
         </div>
       )}
+
+      {/* Trend charts */}
+      <NutritionTrend userId={user?.id} calorieTarget={targets.calories} proteinTarget={targets.protein} />
 
       {/* History */}
       <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
