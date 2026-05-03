@@ -45,12 +45,6 @@ export default function NutritionTab() {
   const [historyLogs, setHistoryLogs] = useState(null)
   const [historyLoading, setHistoryLoading] = useState(false)
 
-  const yesterday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toLocaleDateString('en-CA') })()
-  const [pastDate, setPastDate] = useState(yesterday)
-  const [pastText, setPastText] = useState('')
-  const [pastLoading, setPastLoading] = useState(false)
-  const [pastError, setPastError] = useState(null)
-  const [pastSuccess, setPastSuccess] = useState(null)
 
   const targets = {
     calories: profile?.daily_calories || 2000,
@@ -119,36 +113,6 @@ export default function NutritionTab() {
       .order('logged_at', { ascending: false })
     setHistoryLogs(data || [])
     setHistoryLoading(false)
-  }
-
-  async function logPastEntry() {
-    if (!pastText.trim()) return
-    setPastLoading(true); setPastError(null); setPastSuccess(null)
-    try {
-      const result = await callClaude('process_quick_log', {
-        mode: 'text',
-        raw_input: pastText.trim(),
-        profile: profile ? { goal: profile.goal, weight_kg: profile.weight_kg, daily_calories: targets.calories, daily_protein_g: targets.protein } : null,
-      }, lang)
-      if (result.food) {
-        const loggedAt = new Date(pastDate + 'T12:00:00').toISOString()
-        await supabase.from('food_logs').insert({
-          user_id: user.id,
-          description: result.food.description,
-          calories: result.food.calories,
-          protein_g: result.food.protein_g,
-          carbs_g: result.food.carbs_g,
-          fat_g: result.food.fat_g,
-          logged_at: loggedAt,
-        })
-        setPastSuccess(`${result.food.description} — ${result.food.calories} kcal`)
-        setPastText('')
-        setHistoryLogs(null) // force reload on next open
-      } else {
-        setPastError(t('nutrition.past_not_food'))
-      }
-    } catch { setPastError(t('common.retry')) }
-    finally { setPastLoading(false) }
   }
 
   // Re-clear AI suggestions if language changes
@@ -262,44 +226,6 @@ export default function NutritionTab() {
             </svg>
           </span>
         </button>
-        {/* Past entry form — always visible when history is expanded */}
-        {showHistory && (
-          <div className="px-4 pb-3 border-b border-zinc-100">
-            <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">{t('nutrition.past_log_label')}</p>
-            <div className="flex gap-2 mb-2">
-              <input
-                type="date"
-                value={pastDate}
-                max={yesterday}
-                onChange={e => { setPastDate(e.target.value); setPastSuccess(null); setPastError(null) }}
-                className="bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
-              />
-            </div>
-            <textarea
-              value={pastText}
-              onChange={e => { setPastText(e.target.value); setPastSuccess(null); setPastError(null) }}
-              placeholder={t('nutrition.past_log_placeholder')}
-              rows={2}
-              disabled={pastLoading}
-              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 resize-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent disabled:opacity-50"
-            />
-            {pastSuccess && (
-              <p className="text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mt-2">{pastSuccess}</p>
-            )}
-            {pastError && (
-              <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mt-2">{pastError}</p>
-            )}
-            <button
-              onClick={logPastEntry}
-              disabled={pastLoading || !pastText.trim()}
-              className="mt-2 w-full py-2 rounded-xl bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white text-sm font-semibold transition-all active:scale-95 flex items-center justify-center gap-2"
-            >
-              {pastLoading ? (
-                <><div className="w-3.5 h-3.5 border-2 border-white/60 border-t-transparent rounded-full animate-spin" />{t('quicklog.analyzing')}</>
-              ) : t('nutrition.past_log_submit')}
-            </button>
-          </div>
-        )}
 
         {showHistory && (
           <div className="px-4 pb-4">

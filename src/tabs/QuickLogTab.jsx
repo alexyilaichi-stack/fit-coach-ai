@@ -48,6 +48,15 @@ export default function QuickLogTab() {
   const [feedback, setFeedback] = useState(null)
   const [photoConfirm, setPhotoConfirm] = useState(null)
 
+  const todayStr = new Date().toLocaleDateString('en-CA')
+  const [logDate, setLogDate] = useState(todayStr)
+  const isToday = logDate === todayStr
+
+  function loggedAtForDate(dateStr) {
+    if (dateStr === todayStr) return new Date().toISOString()
+    return new Date(dateStr + 'T12:00:00').toISOString()
+  }
+
   const photoInputRef = useRef(null)
   const healthInputRef = useRef(null)
 
@@ -55,12 +64,12 @@ export default function QuickLogTab() {
     ? { goal: profile.goal, weight_kg: profile.weight_kg, daily_calories: profile.daily_calories, daily_protein_g: profile.daily_protein_g, daily_carbs_g: profile.daily_carbs_g, daily_fat_g: profile.daily_fat_g }
     : null
 
-  async function saveQuickLog(rawInput, categories, aiResponse, imageUrl = null) {
-    await supabase.from('quick_logs').insert({ user_id: user.id, raw_input: rawInput, categories, ai_response: aiResponse, image_url: imageUrl })
+  async function saveQuickLog(rawInput, categories, aiResponse, imageUrl = null, loggedAt = null) {
+    await supabase.from('quick_logs').insert({ user_id: user.id, raw_input: rawInput, categories, ai_response: aiResponse, image_url: imageUrl, ...(loggedAt ? { logged_at: loggedAt } : {}) })
   }
 
-  async function saveFoodLog(foodData, imageUrl = null) {
-    await supabase.from('food_logs').insert({ user_id: user.id, description: foodData.description, calories: foodData.calories, protein_g: foodData.protein_g, carbs_g: foodData.carbs_g, fat_g: foodData.fat_g, image_url: imageUrl })
+  async function saveFoodLog(foodData, imageUrl = null, loggedAt = null) {
+    await supabase.from('food_logs').insert({ user_id: user.id, description: foodData.description, calories: foodData.calories, protein_g: foodData.protein_g, carbs_g: foodData.carbs_g, fat_g: foodData.fat_g, image_url: imageUrl, ...(loggedAt ? { logged_at: loggedAt } : {}) })
   }
 
   async function saveInjuryLog(injuryData, resolvesIds = []) {
@@ -99,13 +108,15 @@ export default function QuickLogTab() {
         profile: profilePayload,
         active_injuries: (activeInjuries || []).map(i => ({ id: i.id, description: i.description })),
       }, lang)
+      const loggedAt = loggedAtForDate(logDate)
       const saves = []
-      if (result.food) saves.push(saveFoodLog(result.food))
+      if (result.food) saves.push(saveFoodLog(result.food, null, loggedAt))
       if (result.injury) saves.push(saveInjuryLog(result.injury, result.resolves || []))
-      saves.push(saveQuickLog(text.trim(), result.categories, result.ai_response))
+      saves.push(saveQuickLog(text.trim(), result.categories, result.ai_response, null, loggedAt))
       await Promise.all(saves)
-      setFeedback({ categories: result.categories, aiResponse: result.ai_response, destRoute: primaryRoute(result.categories) })
+      setFeedback({ categories: result.categories, aiResponse: result.ai_response, destRoute: primaryRoute(result.categories), logDate: isToday ? null : logDate })
       setText('')
+      setLogDate(todayStr)
     } catch { setError(t('quicklog.error_general')) }
     finally { setLoading(false); setLoadingLabel('') }
   }
@@ -172,6 +183,22 @@ export default function QuickLogTab() {
           className="w-full bg-white border border-zinc-200 rounded-2xl px-4 py-3 text-zinc-900 placeholder-zinc-400 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent disabled:opacity-50 shadow-sm transition-shadow"
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleTextSubmit() }}
         />
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={logDate}
+            max={todayStr}
+            onChange={e => setLogDate(e.target.value)}
+            disabled={loading}
+            className="bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs text-zinc-600 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent disabled:opacity-50"
+          />
+          {!isToday && (
+            <span className="text-xs text-orange-500 font-medium">
+              {t('quicklog.logging_for_past')}
+            </span>
+          )}
+        </div>
+
         <button
           onClick={handleTextSubmit}
           disabled={loading || !text.trim()}
