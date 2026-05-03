@@ -21,7 +21,17 @@
       "WebFetch(domain:outlift.com)",
       "Bash(sed -i '' \"s|from '../lib/i18n.js'|from '../lib/i18n.jsx'|g\" /Users/chiyilai/Desktop/my-hackathon-project/src/tabs/TrainingTab.jsx /Users/chiyilai/Desktop/my-hackathon-project/src/tabs/QuickLogTab.jsx /Users/chiyilai/Desktop/my-hackathon-project/src/components/LogFeedback.jsx /Users/chiyilai/Desktop/my-hackathon-project/src/pages/AppLayout.jsx)",
       "Bash(sed -i '' \"s|from './lib/i18n.js'|from './lib/i18n.jsx'|g\" /Users/chiyilai/Desktop/my-hackathon-project/src/App.jsx)",
-      "Bash(vercel env *)"
+      "Bash(vercel env *)",
+      "Bash(vercel *)",
+      "Bash(pkill -f \"vercel dev\")",
+      "Bash(gh auth *)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(ssh *)",
+      "Read(//Users/chiyilai/**)",
+      "Bash(ssh-keygen -t ed25519 -C \"alexyilaichi@gmail.com\" -f ~/.ssh/id_ed25519 -N \"\")",
+      "Bash(git -C /Users/chiyilai/Desktop/my-hackathon-project remote set-url origin git@github.com:alexyilaichi-stack/fit-coach-ai.git)",
+      "Bash(git -C /Users/chiyilai/Desktop/my-hackathon-project remote -v)"
     ]
   }
 }

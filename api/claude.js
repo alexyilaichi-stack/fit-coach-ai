@@ -147,12 +147,13 @@ Return ONLY valid JSON: { "categories": ["apple_health"], "apple_health": { "wor
 Set missing fields to null. ai_response: summarize what was logged.${langInstruction(p.language)}`
           : `You are a health coach. Analyze this log entry.
 Categories: "food" (any meal/drink), "injury" (pain, soreness, OR recovery from a condition), "workout" (exercise), "other"
-Return ONLY valid JSON: { "categories": [...], "food"?: { "description": string, "calories": number, "protein_g": number, "carbs_g": number, "fat_g": number }, "injury"?: { "description": string, "is_active": boolean }, "resolves"?: ["id1"], "workout"?: { "description": string }, "ai_response": string }
+Return ONLY valid JSON: { "categories": [...], "food"?: { "description": string, "calories": number, "protein_g": number, "carbs_g": number, "fat_g": number, "confidence": "high"|"medium"|"low" }, "injury"?: { "description": string, "is_active": boolean }, "resolves"?: ["id1"], "workout"?: { "description": string }, "ai_response": string }
 Rules:
 1. Detect ALL categories that apply
 2. injury is_active: true=new/ongoing, false=recovery/resolved
 3. resolves: include IDs from the active injuries list that this log semantically resolves (same body part, user says better, etc). Omit if nothing resolved.
-4. ai_response: specific and personalized, never just "Logged."${langInstruction(p.language)}`
+4. food.confidence: "high" if specific quantities given, "medium" if reasonable estimate, "low" if very vague
+5. ai_response: specific and personalized, never just "Logged."${langInstruction(p.language)}`
 
         const rawText = await claude(systemPrompt, userContent)
         result = parseJSON(rawText)

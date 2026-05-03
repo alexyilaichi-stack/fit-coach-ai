@@ -8,6 +8,7 @@ import { supabase } from '../supabaseClient.js'
 import MacroBar from '../components/MacroBar.jsx'
 import FoodEntry from '../components/FoodEntry.jsx'
 import NutritionTrend from '../components/NutritionTrend.jsx'
+import MealBreakdownChart from '../components/MealBreakdownChart.jsx'
 
 function sum(logs, field) {
   return Math.round(logs.reduce((acc, l) => acc + (l[field] || 0), 0))
@@ -127,32 +128,27 @@ export default function NutritionTab() {
         <h1 className="text-2xl font-bold text-zinc-900">{t('nutrition.title')}</h1>
       </div>
 
-      {/* Macro bars */}
-      <div className="bg-white rounded-2xl p-4 border border-zinc-100 shadow-sm flex flex-col gap-4">
+      {/* Macro cards — 2x2 grid */}
+      <div className="grid grid-cols-2 gap-3">
         <MacroBar
           label={`${t('nutrition.calories')} (${t('nutrition.kcal')})`}
-          current={eaten.calories}
-          target={targets.calories}
-          unit=""
-          color="bg-orange-400"
+          current={eaten.calories} target={targets.calories} unit=""
+          color="bg-orange-400" bgColor="bg-orange-50" textColor="text-orange-600"
         />
         <MacroBar
           label={`${t('nutrition.protein')} (g)`}
-          current={eaten.protein}
-          target={targets.protein}
-          color="bg-blue-400"
+          current={eaten.protein} target={targets.protein}
+          color="bg-rose-400" bgColor="bg-rose-50" textColor="text-rose-600"
         />
         <MacroBar
           label={`${t('nutrition.carbs')} (g)`}
-          current={eaten.carbs}
-          target={targets.carbs}
-          color="bg-amber-400"
+          current={eaten.carbs} target={targets.carbs}
+          color="bg-blue-400" bgColor="bg-blue-50" textColor="text-blue-600"
         />
         <MacroBar
           label={`${t('nutrition.fat')} (g)`}
-          current={eaten.fat}
-          target={targets.fat}
-          color="bg-rose-400"
+          current={eaten.fat} target={targets.fat}
+          color="bg-amber-400" bgColor="bg-amber-50" textColor="text-amber-600"
         />
       </div>
 
@@ -178,6 +174,9 @@ export default function NutritionTab() {
           </div>
         )}
       </div>
+
+      {/* Meal breakdown chart */}
+      <MealBreakdownChart foodLogs={foodLogs} />
 
       {/* Remaining recommendation */}
       {foodLogs.length > 0 && (
