@@ -192,20 +192,74 @@ export default function InjuryTab() {
             </div>
           </div>
         ) : (
-          <div className="px-4 pb-4">
-            <StatRow label={t('body.height')} value={profile.height_cm} unit=" cm" />
-            <StatRow label={t('body.weight')} value={profile.weight_kg} unit=" kg" />
-            <StatRow label={t('body.body_fat')} value={profile.body_fat_pct} unit="%" />
-            <StatRow label={t('body.muscle_mass')} value={profile.muscle_mass_kg} unit=" kg" />
-            {profile.bench_kg && <StatRow label={t('body.bench')} value={profile.bench_kg} unit=" kg" />}
-            {profile.squat_kg && <StatRow label={t('body.squat')} value={profile.squat_kg} unit=" kg" />}
-            {profile.deadlift_kg && <StatRow label={t('body.deadlift')} value={profile.deadlift_kg} unit=" kg" />}
-            {profile.goal && <StatRow label={t('body.goal')} value={t(GOAL_KEYS[profile.goal] || 'body.goal.other')} />}
-            {profile.target && (
-              <div className="py-2 border-b border-zinc-100 last:border-0">
-                <p className="text-sm text-zinc-500 mb-1">{t('body.target')}</p>
-                <p className="text-sm text-zinc-800 leading-relaxed">{profile.target}</p>
+          <div className="px-4 pb-4 flex flex-col gap-4">
+
+            {/* Key stats — 3 cards */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: t('body.height'), value: profile.height_cm, unit: 'cm', bg: 'bg-sky-50',    text: 'text-sky-600'    },
+                { label: t('body.weight'), value: profile.weight_kg, unit: 'kg', bg: 'bg-orange-50', text: 'text-orange-600' },
+                { label: t('body.body_fat'), value: profile.body_fat_pct != null ? `${profile.body_fat_pct}%` : null, unit: '', bg: 'bg-rose-50', text: 'text-rose-600' },
+              ].filter(s => s.value != null).map(s => (
+                <div key={s.label} className={`${s.bg} rounded-2xl p-3 text-center`}>
+                  <p className={`text-xl font-bold ${s.text}`}>{s.value}</p>
+                  {s.unit && <p className="text-xs text-zinc-400">{s.unit}</p>}
+                  <p className="text-xs font-medium text-zinc-500 mt-0.5">{s.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Body composition bar */}
+            {profile.weight_kg && profile.body_fat_pct != null && profile.muscle_mass_kg && (() => {
+              const fatKg   = Math.round(profile.weight_kg * profile.body_fat_pct / 100 * 10) / 10
+              const leanKg  = profile.muscle_mass_kg
+              const leanPct = Math.round((leanKg / profile.weight_kg) * 100)
+              const fatPct  = Math.round((fatKg  / profile.weight_kg) * 100)
+              return (
+                <div>
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">{t('body.composition')}</p>
+                  <div className="h-4 rounded-full overflow-hidden flex">
+                    <div className="bg-orange-400 transition-all duration-700" style={{ width: `${leanPct}%` }} />
+                    <div className="bg-rose-300 flex-1" />
+                  </div>
+                  <div className="flex justify-between mt-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block" />
+                      <span className="text-xs text-zinc-500">{t('body.muscle_mass')} {leanKg}kg</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-300 inline-block" />
+                      <span className="text-xs text-zinc-500">{t('body.fat_mass')} {fatKg}kg</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Lift badges */}
+            {(profile.bench_kg || profile.squat_kg || profile.deadlift_kg) && (
+              <div>
+                <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">{t('body.lifts')}</p>
+                <div className="flex gap-2 flex-wrap">
+                  {profile.bench_kg    && <span className="px-3 py-1.5 bg-violet-50 text-violet-700 rounded-xl text-sm font-semibold">{t('body.bench_short')} {profile.bench_kg}kg</span>}
+                  {profile.squat_kg   && <span className="px-3 py-1.5 bg-blue-50   text-blue-700   rounded-xl text-sm font-semibold">{t('body.squat_short')} {profile.squat_kg}kg</span>}
+                  {profile.deadlift_kg && <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-semibold">{t('body.deadlift_short')} {profile.deadlift_kg}kg</span>}
+                </div>
               </div>
+            )}
+
+            {/* Goal + target */}
+            {profile.goal && (
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-semibold">
+                  {t(GOAL_KEYS[profile.goal] || 'body.goal.other')}
+                </span>
+              </div>
+            )}
+            {profile.target && (
+              <p className="text-sm text-zinc-600 leading-relaxed bg-zinc-50 rounded-xl px-3 py-2.5">
+                {profile.target}
+              </p>
             )}
           </div>
         )}
