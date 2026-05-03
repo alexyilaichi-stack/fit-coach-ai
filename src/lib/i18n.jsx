@@ -134,6 +134,7 @@ const T = {
     'nutrition.past_log_submit':    'Log it',
     'nutrition.past_not_food':      'Could not identify food — try describing a meal or drink',
     'quicklog.logging_for_past':    'Logging for past date',
+    'quicklog.history':             'Recent logs',
 
     // Common
     'common.retry':     'Retry',
@@ -274,6 +275,7 @@ const T = {
     'nutrition.past_log_submit':    '记录',
     'nutrition.past_not_food':      '未能识别食物，请描述具体的餐食或饮料',
     'quicklog.logging_for_past':    '正在补录历史数据',
+    'quicklog.history':             '历史记录',
 
     // Common
     'common.retry':     '重试',

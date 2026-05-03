@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient.js'
 import { callClaude } from '../lib/claude.js'
@@ -7,6 +7,57 @@ import { useProfile } from '../hooks/useProfile.js'
 import { useLanguage } from '../lib/i18n.jsx'
 import LogFeedback from '../components/LogFeedback.jsx'
 import PhotoConfirm from '../components/PhotoConfirm.jsx'
+
+const CATEGORY_COLORS = {
+  food:         'bg-emerald-100 text-emerald-700',
+  injury:       'bg-amber-100 text-amber-700',
+  workout:      'bg-blue-100 text-blue-700',
+  apple_health: 'bg-violet-100 text-violet-700',
+  other:        'bg-zinc-100 text-zinc-500',
+}
+
+function timeAgo(isoStr, lang) {
+  const diff = Math.floor((Date.now() - new Date(isoStr)) / 1000)
+  if (diff < 60)  return lang === 'zh' ? '刚刚' : 'Just now'
+  if (diff < 3600) {
+    const m = Math.floor(diff / 60)
+    return lang === 'zh' ? `${m}分钟前` : `${m}m ago`
+  }
+  if (diff < 86400) {
+    const h = Math.floor(diff / 3600)
+    return lang === 'zh' ? `${h}小时前` : `${h}h ago`
+  }
+  const d = Math.floor(diff / 86400)
+  if (d === 1) return lang === 'zh' ? '昨天' : 'Yesterday'
+  return lang === 'zh' ? `${d}天前` : `${d}d ago`
+}
+
+function LogHistoryItem({ log }) {
+  const { t, lang } = useLanguage()
+  const isPhoto = log.image_url && !log.raw_input?.startsWith('[apple')
+  return (
+    <div className="bg-white border border-zinc-100 rounded-2xl p-4 shadow-sm flex flex-col gap-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-1.5">
+          {(log.categories || []).map(cat => (
+            <span key={cat} className={`text-xs font-medium px-2 py-0.5 rounded-full ${CATEGORY_COLORS[cat] || CATEGORY_COLORS.other}`}>
+              {t('feedback.' + cat)}
+            </span>
+          ))}
+        </div>
+        <span className="text-xs text-zinc-400 shrink-0">{timeAgo(log.logged_at, lang)}</span>
+      </div>
+      {isPhoto ? (
+        <img src={log.image_url} alt="" className="w-full h-28 object-cover rounded-xl" />
+      ) : (
+        <p className="text-sm text-zinc-700 leading-relaxed">{log.raw_input}</p>
+      )}
+      {log.ai_response && (
+        <p className="text-sm text-zinc-500 leading-relaxed border-t border-zinc-50 pt-2">{log.ai_response}</p>
+      )}
+    </div>
+  )
+}
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -47,6 +98,20 @@ export default function QuickLogTab() {
   const [error, setError] = useState(null)
   const [feedback, setFeedback] = useState(null)
   const [photoConfirm, setPhotoConfirm] = useState(null)
+  const [recentLogs, setRecentLogs] = useState([])
+
+  const loadRecentLogs = useCallback(async () => {
+    if (!user?.id) return
+    const { data } = await supabase
+      .from('quick_logs')
+      .select('id, raw_input, categories, ai_response, image_url, logged_at')
+      .eq('user_id', user.id)
+      .order('logged_at', { ascending: false })
+      .limit(20)
+    setRecentLogs(data || [])
+  }, [user?.id])
+
+  useEffect(() => { loadRecentLogs() }, [loadRecentLogs])
 
   const todayStr = new Date().toLocaleDateString('en-CA')
   const [logDate, setLogDate] = useState(todayStr)
@@ -118,6 +183,7 @@ export default function QuickLogTab() {
       setFeedback({ categories: result.categories, aiResponse: result.ai_response, destRoute: primaryRoute(result.categories), logDate: isToday ? null : logDate })
       setText('')
       setLogDate(todayStr)
+      loadRecentLogs()
     } catch { setError(t('quicklog.error_general')) }
     finally { setLoading(false); setLoadingLabel('') }
   }
@@ -143,6 +209,7 @@ export default function QuickLogTab() {
       ])
       setFeedback({ categories: photoConfirm.categories || ['food'], aiResponse: photoConfirm.aiResponse, destRoute: '/app/nutrition' })
       setPhotoConfirm(null)
+      loadRecentLogs()
     } catch { setError(t('quicklog.error_save')) }
     finally { setLoading(false); setLoadingLabel('') }
   }
@@ -290,6 +357,16 @@ export default function QuickLogTab() {
               {feedback.destRoute === '/app/nutrition' ? t('quicklog.go_nutrition') : t('quicklog.go_training')}
             </button>
           )}
+        </div>
+      )}
+
+      {/* Recent logs feed */}
+      {recentLogs.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-1">{t('quicklog.history')}</p>
+          {recentLogs.map(log => (
+            <LogHistoryItem key={log.id} log={log} />
+          ))}
         </div>
       )}
 
