@@ -101,10 +101,10 @@ export default function AppLayout() {
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0, x: direction * 24 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: direction * -16 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 32, mass: 0.9 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: 'easeInOut' }}
             className="min-h-full"
           >
             <Outlet />

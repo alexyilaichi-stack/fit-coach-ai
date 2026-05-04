@@ -421,9 +421,17 @@ export default function TrainingTab() {
 
   if (loadingPlan || !user || !profile) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 bg-zinc-50">
-        <div className="w-6 h-6 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-zinc-400">{t('training.generating')}</p>
+      <div className="flex flex-col min-h-full bg-zinc-50 p-4 gap-5 pt-16 pb-8">
+        <div className="h-7 w-36 bg-zinc-200 rounded-xl animate-pulse" />
+        <div className="flex gap-2">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-9 w-14 bg-zinc-200 rounded-full animate-pulse" />
+          ))}
+        </div>
+        <div className="h-10 bg-zinc-100 rounded-xl animate-pulse" />
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-20 bg-zinc-200 rounded-2xl animate-pulse" style={{ opacity: 1 - i * 0.15 }} />
+        ))}
       </div>
     )
   }
