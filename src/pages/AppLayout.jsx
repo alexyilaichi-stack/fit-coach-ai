@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useAuth } from '../hooks/useAuth.js'
 import { useLanguage } from '../lib/i18n.jsx'
 import { supabase } from '../supabaseClient.js'
@@ -44,17 +44,12 @@ const TABS = [
   },
 ]
 
-const TAB_PATHS = TABS.map(t => t.path)
-
 export default function AppLayout() {
   const { user } = useAuth()
   const { t, lang, toggleLang } = useLanguage()
   const navigate = useNavigate()
   const location = useLocation()
   const [profileChecked, setProfileChecked] = useState(false)
-  const [prevTabIndex, setPrevTabIndex] = useState(0)
-
-  const currentTabIndex = TAB_PATHS.indexOf(location.pathname)
 
   useEffect(() => {
     if (!user) return
@@ -72,10 +67,6 @@ export default function AppLayout() {
       })
   }, [user])
 
-  function handleTabClick(index) {
-    setPrevTabIndex(currentTabIndex >= 0 ? currentTabIndex : index)
-  }
-
   if (!profileChecked) {
     return (
       <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
@@ -83,8 +74,6 @@ export default function AppLayout() {
       </div>
     )
   }
-
-  const direction = currentTabIndex >= prevTabIndex ? 1 : -1
 
   return (
     <div className="min-h-screen bg-zinc-50 flex flex-col">
@@ -97,29 +86,19 @@ export default function AppLayout() {
         {lang === 'en' ? '中文' : 'EN'}
       </motion.button>
 
-      <div className="flex-1 overflow-y-auto pb-20 relative">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18, ease: 'easeInOut' }}
-            className="min-h-full"
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
+      <div className="flex-1 overflow-y-auto pb-20">
+        <div key={location.pathname} className="min-h-full tab-enter">
+          <Outlet />
+        </div>
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-zinc-200 safe-area-inset-bottom">
         <div className="flex max-w-lg mx-auto items-stretch relative">
-          {TABS.map((tab, i) => (
+          {TABS.map((tab) => (
             <NavLink
               key={tab.path}
               to={tab.path}
               className="flex-1"
-              onClick={() => handleTabClick(i)}
             >
               {({ isActive }) => (
                 <motion.div
