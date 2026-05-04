@@ -86,10 +86,12 @@ Rules: 6-8 exercises, group same muscle together, calibrate weights to lifts, NE
       case 'analyze_frequency': {
         const p = payload
         const logs = (p.workout_logs || []).map(w => `- ${w.raw_input} (${new Date(w.logged_at).toLocaleDateString()})`).join('\n')
+        const sessions = (p.workout_sessions || []).map(s => `- ${s.date}: ${s.exercises || 'workout'}`).join('\n')
+        const allData = [logs, sessions].filter(s => s.trim()).join('\n')
         const text = await claude(
-          `You are a personal trainer reviewing workout frequency. Return ONLY valid JSON: { "note": "string" }
-note: 1-2 specific sentences referencing actual patterns in the logs. If no logs, encourage starting.${langInstruction(p.language)}`,
-          `Workout logs last 14 days:\n${logs || 'No logs yet.'}`,
+          `You are a personal trainer reviewing workout history. Return ONLY valid JSON: { "note": "string" }
+note: 1-2 specific sentences referencing actual patterns (muscle groups, frequency, recency). If no data, encourage starting.${langInstruction(p.language)}`,
+          `Workout records:\n${allData || 'No logs yet.'}`,
           { max_tokens: 256 }
         )
         result = parseJSON(text)

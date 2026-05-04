@@ -281,18 +281,22 @@ export default function TrainingTab() {
     setLoadingNote(true)
     try {
       const twoWeeksAgo = new Date(); twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
-      const { data: logs } = await supabase.from('quick_logs').select('raw_input, logged_at').eq('user_id', userId).contains('categories', ['workout']).gte('logged_at', twoWeeksAgo.toISOString())
-      await fetchFrequencyNoteWithLogs(userId, logs || [])
+      const [{ data: logs }, { data: sessions }] = await Promise.all([
+        supabase.from('quick_logs').select('raw_input, logged_at').eq('user_id', userId).contains('categories', ['workout']).gte('logged_at', twoWeeksAgo.toISOString()),
+        supabase.from('workout_sessions').select('workout_date, workout_sets(exercise, is_warmup)').eq('user_id', userId).order('workout_date', { ascending: false }).limit(30),
+      ])
+      const workoutSessions = (sessions || []).map(s => ({
+        date: s.workout_date,
+        exercises: (s.workout_sets || []).filter(w => !w.is_warmup).map(w => w.exercise).join(', '),
+      }))
+      const result = await callClaude('analyze_frequency', { workout_logs: logs || [], workout_sessions: workoutSessions }, lang)
+      setFrequencyNote(result.note)
+      saveFreqCache(userId, result.note)
     } catch {} finally { setLoadingNote(false) }
   }
 
   async function fetchFrequencyNoteWithLogs(userId, logs) {
-    setLoadingNote(true)
-    try {
-      const result = await callClaude('analyze_frequency', { workout_logs: logs }, lang)
-      setFrequencyNote(result.note)
-      saveFreqCache(userId, result.note)
-    } catch {} finally { setLoadingNote(false) }
+    fetchFrequencyNote(userId)
   }
 
   async function loadPlan(userId, prof, requestedType = null) {
