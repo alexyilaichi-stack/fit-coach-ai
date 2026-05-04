@@ -96,7 +96,7 @@ function savePlanCache(userId, data) {
 
 // Frequency note cache — localStorage, 12-hour TTL
 const FREQ_TTL_MS = 12 * 60 * 60 * 1000
-function freqCacheKey(userId) { return `fc_freq_${userId}` }
+function freqCacheKey(userId) { return `fc_freq3_${userId}` }
 function loadFreqCache(userId) {
   try {
     const raw = JSON.parse(localStorage.getItem(freqCacheKey(userId)) || 'null')
@@ -108,37 +108,77 @@ function saveFreqCache(userId, note) {
   try { localStorage.setItem(freqCacheKey(userId), JSON.stringify({ note, ts: Date.now() })) } catch {}
 }
 
-function HistoryEntry({ plan }) {
+function HistoryEntry({ item }) {
   const [open, setOpen] = useState(false)
   const { lang } = useLanguage()
-  const normalized = normalizePlan(plan.plan_json)
-  const exercises = normalized?.exercises || []
-  const focus = normalized?.workout_focus || normalized?.workout_type || 'Workout'
-  const date = new Date(plan.plan_date + 'T00:00:00')
+
+  const isPlan = item.type === 'plan'
+  const dateStr = isPlan ? item.plan_date : item.workout_date
+  const date = new Date(dateStr + 'T00:00:00')
   const label = date.toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 
+  // Plan type: show AI-generated exercises
+  if (isPlan) {
+    const normalized = normalizePlan(item.plan_json)
+    const exercises = normalized?.exercises || []
+    const focus = normalized?.workout_focus || normalized?.workout_type || 'Workout'
+    return (
+      <div className="border border-zinc-100 rounded-2xl overflow-hidden shadow-sm">
+        <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-zinc-50 transition-colors">
+          <div className="flex flex-col items-start">
+            <span className="text-sm font-semibold text-zinc-900">{label}</span>
+            <span className="text-xs text-zinc-400 mt-0.5">{focus}</span>
+          </div>
+          <svg className={`w-4 h-4 text-zinc-400 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {open && exercises.length > 0 && (
+          <div className="px-4 pb-3 pt-2 bg-zinc-50 flex flex-col gap-1">
+            {exercises.map((ex, i) => (
+              <div key={i} className="flex items-center justify-between text-xs text-zinc-500 py-1.5 border-b border-zinc-100 last:border-0">
+                <span className="text-zinc-700 font-medium">{ex.exercise}</span>
+                <span>{ex.sets}×{ex.reps} @ {ex.weight_kg}kg</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Session type: show manually logged sets
+  const allSets = [...(item.workout_sets || [])].sort((a, b) => (a.set_order ?? 0) - (b.set_order ?? 0))
+  const mainSets = allSets.filter(s => !s.is_warmup)
+  const subtitle = lang === 'zh' ? `${mainSets.length} 个动作（手动记录）` : `${mainSets.length} exercises (logged)`
   return (
     <div className="border border-zinc-100 rounded-2xl overflow-hidden shadow-sm">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-zinc-50 transition-colors"
-      >
+      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-zinc-50 transition-colors">
         <div className="flex flex-col items-start">
           <span className="text-sm font-semibold text-zinc-900">{label}</span>
-          <span className="text-xs text-zinc-400 mt-0.5">{focus}</span>
+          <span className="text-xs text-zinc-400 mt-0.5">{subtitle}</span>
         </div>
         <svg className={`w-4 h-4 text-zinc-400 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {open && exercises.length > 0 && (
+      {open && mainSets.length > 0 && (
         <div className="px-4 pb-3 pt-2 bg-zinc-50 flex flex-col gap-1">
-          {exercises.map((ex, i) => (
-            <div key={i} className="flex items-center justify-between text-xs text-zinc-500 py-1.5 border-b border-zinc-100 last:border-0">
-              <span className="text-zinc-700 font-medium">{ex.exercise}</span>
-              <span>{ex.sets}×{ex.reps} @ {ex.weight_kg}kg</span>
-            </div>
-          ))}
+          {mainSets.map((s, i) => {
+            const setsData = s.sets_data || []
+            const summary = setsData.map(sd => {
+              const w = sd.weight != null ? `${sd.weight}${sd.weight_unit || 'lbs'}` : ''
+              const r = sd.reps ? `×${sd.reps}` : ''
+              const n = (sd.sets && sd.sets > 1) ? ` ×${sd.sets}` : ''
+              return [w, r, n].filter(Boolean).join('')
+            }).filter(Boolean).join(' / ')
+            return (
+              <div key={i} className="flex items-center justify-between text-xs text-zinc-500 py-1.5 border-b border-zinc-100 last:border-0">
+                <span className="text-zinc-700 font-medium">{s.exercise}</span>
+                <span className="text-right ml-2">{summary}</span>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -269,15 +309,21 @@ export default function TrainingTab() {
     setLoadingNote(true)
     try {
       const twoWeeksAgo = new Date(); twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
-      const [{ data: logs }, { data: sessions }] = await Promise.all([
+      const [{ data: logs }, { data: sessions }, { data: plans }] = await Promise.all([
         supabase.from('quick_logs').select('raw_input, logged_at').eq('user_id', userId).contains('categories', ['workout']).gte('logged_at', twoWeeksAgo.toISOString()),
-        supabase.from('workout_sessions').select('workout_date, workout_sets(exercise, is_warmup)').eq('user_id', userId).order('workout_date', { ascending: false }).limit(30),
+        supabase.from('workout_sessions').select('workout_date, workout_sets(exercise, is_warmup)').eq('user_id', userId).order('workout_date', { ascending: false }).limit(60),
+        supabase.from('training_plans').select('plan_date, plan_json').eq('user_id', userId).order('plan_date', { ascending: false }).limit(60),
       ])
-      const workoutSessions = (sessions || []).map(s => ({
+      const sessionItems = (sessions || []).map(s => ({
         date: s.workout_date,
         exercises: (s.workout_sets || []).filter(w => !w.is_warmup).map(w => w.exercise).join(', '),
       }))
-      const result = await callClaude('analyze_frequency', { workout_logs: logs || [], workout_sessions: workoutSessions }, lang)
+      const planItems = (plans || []).map(p => {
+        const norm = normalizePlan(p.plan_json)
+        return { date: p.plan_date, exercises: (norm?.exercises || []).map(e => e.exercise).join(', ') }
+      })
+      const allSessions = [...sessionItems, ...planItems].sort((a, b) => b.date.localeCompare(a.date))
+      const result = await callClaude('analyze_frequency', { workout_logs: logs || [], workout_sessions: allSessions }, lang)
       setFrequencyNote(result.note)
       saveFreqCache(userId, result.note)
     } catch {} finally { setLoadingNote(false) }
@@ -300,13 +346,14 @@ export default function TrainingTab() {
   async function loadHistory(userId) {
     setLoadingHistory(true)
     try {
-      const { data } = await supabase
-        .from('training_plans')
-        .select('id, plan_date, plan_json, frequency_note')
-        .eq('user_id', userId)
-        .order('plan_date', { ascending: false })
-        .limit(30)
-      setHistory((data || []).filter(p => p.plan_date !== todayStr()))
+      const [{ data: plans }, { data: sessions }] = await Promise.all([
+        supabase.from('training_plans').select('id, plan_date, plan_json').eq('user_id', userId).order('plan_date', { ascending: false }).limit(60),
+        supabase.from('workout_sessions').select('id, workout_date, workout_sets(id, exercise, sets_data, is_warmup, set_order)').eq('user_id', userId).order('workout_date', { ascending: false }).limit(60),
+      ])
+      const planItems = (plans || []).filter(p => p.plan_date !== todayStr()).map(p => ({ ...p, type: 'plan', _date: p.plan_date }))
+      const sessionItems = (sessions || []).map(s => ({ ...s, type: 'session', _date: s.workout_date }))
+      const merged = [...planItems, ...sessionItems].sort((a, b) => b._date.localeCompare(a._date))
+      setHistory(merged)
     } catch {}
     finally { setLoadingHistory(false) }
   }
@@ -542,7 +589,7 @@ export default function TrainingTab() {
             ) : history.length === 0 ? (
               <p className="text-sm text-zinc-400">{t('training.history_empty')}</p>
             ) : (
-              history.map(plan => <HistoryEntry key={plan.id} plan={plan} />)
+              history.map(item => <HistoryEntry key={item.type + item.id} item={item} />)
             )}
           </div>
         )}
