@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient.js'
 import { callClaude } from '../lib/claude.js'
 import { useAuth } from '../hooks/useAuth.js'
 import { useProfile } from '../hooks/useProfile.js'
 import { useLanguage } from '../lib/i18n.jsx'
 import ExerciseCard from '../components/ExerciseCard.jsx'
+
+const spring = { type: 'spring', stiffness: 420, damping: 32 }
+const staggerContainer = { animate: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } } }
+const fadeUp = { initial: { opacity: 0, y: 14 }, animate: { opacity: 1, y: 0, transition: spring } }
 
 const WORKOUT_TYPES = [
   { key: 'push' },
@@ -117,71 +122,75 @@ function HistoryEntry({ item }) {
   const date = new Date(dateStr + 'T00:00:00')
   const label = date.toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 
-  // Plan type: show AI-generated exercises
+  let subtitle, rows
   if (isPlan) {
     const normalized = normalizePlan(item.plan_json)
     const exercises = normalized?.exercises || []
-    const focus = normalized?.workout_focus || normalized?.workout_type || 'Workout'
-    return (
-      <div className="border border-zinc-100 rounded-2xl overflow-hidden shadow-sm">
-        <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-zinc-50 transition-colors">
-          <div className="flex flex-col items-start">
-            <span className="text-sm font-semibold text-zinc-900">{label}</span>
-            <span className="text-xs text-zinc-400 mt-0.5">{focus}</span>
-          </div>
-          <svg className={`w-4 h-4 text-zinc-400 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-        {open && exercises.length > 0 && (
-          <div className="px-4 pb-3 pt-2 bg-zinc-50 flex flex-col gap-1">
-            {exercises.map((ex, i) => (
-              <div key={i} className="flex items-center justify-between text-xs text-zinc-500 py-1.5 border-b border-zinc-100 last:border-0">
-                <span className="text-zinc-700 font-medium">{ex.exercise}</span>
-                <span>{ex.sets}×{ex.reps} @ {ex.weight_kg}kg</span>
-              </div>
-            ))}
-          </div>
-        )}
+    subtitle = normalized?.workout_focus || normalized?.workout_type || 'Workout'
+    rows = exercises.map((ex, i) => (
+      <div key={i} className="flex items-center justify-between text-xs text-zinc-500 py-1.5 border-b border-zinc-100 last:border-0">
+        <span className="text-zinc-700 font-medium">{ex.exercise}</span>
+        <span>{ex.sets}×{ex.reps} @ {ex.weight_kg}kg</span>
       </div>
-    )
+    ))
+  } else {
+    const allSets = [...(item.workout_sets || [])].sort((a, b) => (a.set_order ?? 0) - (b.set_order ?? 0))
+    const mainSets = allSets.filter(s => !s.is_warmup)
+    subtitle = lang === 'zh' ? `${mainSets.length} 个动作（手动记录）` : `${mainSets.length} exercises (logged)`
+    rows = mainSets.map((s, i) => {
+      const summary = (s.sets_data || []).map(sd => {
+        const w = sd.weight != null ? `${sd.weight}${sd.weight_unit || 'lbs'}` : ''
+        const r = sd.reps ? `×${sd.reps}` : ''
+        const n = (sd.sets && sd.sets > 1) ? ` ×${sd.sets}` : ''
+        return [w, r, n].filter(Boolean).join('')
+      }).filter(Boolean).join(' / ')
+      return (
+        <div key={i} className="flex items-center justify-between text-xs text-zinc-500 py-1.5 border-b border-zinc-100 last:border-0">
+          <span className="text-zinc-700 font-medium">{s.exercise}</span>
+          <span className="text-right ml-2">{summary}</span>
+        </div>
+      )
+    })
   }
 
-  // Session type: show manually logged sets
-  const allSets = [...(item.workout_sets || [])].sort((a, b) => (a.set_order ?? 0) - (b.set_order ?? 0))
-  const mainSets = allSets.filter(s => !s.is_warmup)
-  const subtitle = lang === 'zh' ? `${mainSets.length} 个动作（手动记录）` : `${mainSets.length} exercises (logged)`
   return (
-    <div className="border border-zinc-100 rounded-2xl overflow-hidden shadow-sm">
-      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-zinc-50 transition-colors">
+    <motion.div layout className="border border-zinc-100 rounded-2xl overflow-hidden shadow-sm bg-white">
+      <motion.button
+        onClick={() => setOpen(o => !o)}
+        whileTap={{ scale: 0.98 }}
+        transition={{ type: 'spring', stiffness: 600, damping: 25 }}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-zinc-50 transition-colors"
+      >
         <div className="flex flex-col items-start">
           <span className="text-sm font-semibold text-zinc-900">{label}</span>
           <span className="text-xs text-zinc-400 mt-0.5">{subtitle}</span>
         </div>
-        <svg className={`w-4 h-4 text-zinc-400 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <motion.svg
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+          className="w-4 h-4 text-zinc-400 shrink-0"
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+        >
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      {open && mainSets.length > 0 && (
-        <div className="px-4 pb-3 pt-2 bg-zinc-50 flex flex-col gap-1">
-          {mainSets.map((s, i) => {
-            const setsData = s.sets_data || []
-            const summary = setsData.map(sd => {
-              const w = sd.weight != null ? `${sd.weight}${sd.weight_unit || 'lbs'}` : ''
-              const r = sd.reps ? `×${sd.reps}` : ''
-              const n = (sd.sets && sd.sets > 1) ? ` ×${sd.sets}` : ''
-              return [w, r, n].filter(Boolean).join('')
-            }).filter(Boolean).join(' / ')
-            return (
-              <div key={i} className="flex items-center justify-between text-xs text-zinc-500 py-1.5 border-b border-zinc-100 last:border-0">
-                <span className="text-zinc-700 font-medium">{s.exercise}</span>
-                <span className="text-right ml-2">{summary}</span>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
+        </motion.svg>
+      </motion.button>
+      <AnimatePresence initial={false}>
+        {open && rows.length > 0 && (
+          <motion.div
+            key="content"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div className="px-4 pb-3 pt-2 bg-zinc-50 flex flex-col gap-1">
+              {rows}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }
 
@@ -517,39 +526,49 @@ export default function TrainingTab() {
         )}
 
         {/* Coach note */}
-        {loadingNote ? (
-          <div className="flex items-center gap-2 bg-white border border-zinc-100 rounded-xl px-4 py-3 shadow-sm">
-            <div className="w-3 h-3 border border-orange-400 border-t-transparent rounded-full animate-spin shrink-0" />
-            <span className="text-xs text-zinc-400">{t('training.analyzing')}</span>
-          </div>
-        ) : frequencyNote ? (
-          <div className="bg-white border-l-4 border-l-orange-400 border border-zinc-100 rounded-xl px-4 py-3 shadow-sm">
-            <p className="text-xs text-orange-500 font-semibold uppercase tracking-wider mb-1">{t('training.coach_note')}</p>
-            <p className="text-sm text-zinc-600 leading-relaxed">{frequencyNote}</p>
-          </div>
-        ) : null}
+        <AnimatePresence mode="wait">
+          {loadingNote ? (
+            <motion.div key="loading" {...fadeUp} className="flex items-center gap-2 bg-white border border-zinc-100 rounded-xl px-4 py-3 shadow-sm">
+              <div className="w-3 h-3 border border-orange-400 border-t-transparent rounded-full animate-spin shrink-0" />
+              <span className="text-xs text-zinc-400">{t('training.analyzing')}</span>
+            </motion.div>
+          ) : frequencyNote ? (
+            <motion.div key="note" {...fadeUp} className="bg-white border-l-4 border-l-orange-400 border border-zinc-100 rounded-xl px-4 py-3 shadow-sm">
+              <p className="text-xs text-orange-500 font-semibold uppercase tracking-wider mb-1">{t('training.coach_note')}</p>
+              <p className="text-sm text-zinc-600 leading-relaxed">{frequencyNote}</p>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
-        {/* Exercises grouped by muscle */}
-        {groups.map(([muscleGroup, exercises]) => (
-          <div key={muscleGroup} className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <div className="w-1 h-4 rounded-full bg-orange-400" />
-              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                {lang === 'zh' ? (MUSCLE_ZH[muscleGroup] || muscleGroup) : muscleGroup}
-              </p>
-            </div>
-            {exercises.map((exercise) => (
-              <ExerciseCard
-                key={exercise._originalIndex}
-                exercise={{ ...exercise, weight_kg: adjustWeight(exercise.weight_kg, readiness) }}
-                warning={getInjuryWarning(exercise.exercise, activeInjuries)}
-                completedSets={completedSets[exercise._originalIndex] || []}
-                onSetToggle={(setIdx) => handleSetToggle(exercise._originalIndex, setIdx)}
-                onUpdate={(change) => handleExerciseUpdate(exercise._originalIndex, change)}
-              />
-            ))}
-          </div>
-        ))}
+        {/* Exercises grouped by muscle — staggered entrance */}
+        <motion.div
+          key={planData?.workout_type}
+          variants={staggerContainer}
+          initial="initial"
+          animate="animate"
+          className="flex flex-col gap-5"
+        >
+          {groups.map(([muscleGroup, exercises]) => (
+            <motion.div key={muscleGroup} variants={fadeUp} className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-4 rounded-full bg-orange-400" />
+                <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                  {lang === 'zh' ? (MUSCLE_ZH[muscleGroup] || muscleGroup) : muscleGroup}
+                </p>
+              </div>
+              {exercises.map((exercise) => (
+                <ExerciseCard
+                  key={exercise._originalIndex}
+                  exercise={{ ...exercise, weight_kg: adjustWeight(exercise.weight_kg, readiness) }}
+                  warning={getInjuryWarning(exercise.exercise, activeInjuries)}
+                  completedSets={completedSets[exercise._originalIndex] || []}
+                  onSetToggle={(setIdx) => handleSetToggle(exercise._originalIndex, setIdx)}
+                  onUpdate={(change) => handleExerciseUpdate(exercise._originalIndex, change)}
+                />
+              ))}
+            </motion.div>
+          ))}
+        </motion.div>
 
         {/* AI swap */}
         <div className="flex flex-col gap-2 mt-1">
